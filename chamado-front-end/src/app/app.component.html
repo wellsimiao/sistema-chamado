@@ -1,0 +1,124 @@
+<div class="main-container flex flex-col absolute top-0 left-0 right-0 bottom-0">
+
+  <app-header [sidenav]="sidenav"></app-header>
+
+  <mat-sidenav-container class="sidenav-container flex-1">
+
+    <mat-sidenav #sidenav class="w-auto">
+
+      <mat-list>
+
+        <mat-list-item>
+          <mat-icon>home</mat-icon>
+          <span class="ml-3 text-center">
+            <a [routerLink]="['/']" (click)="sidenav.toggle()">Home</a>
+          </span>
+        </mat-list-item>
+
+        <mat-divider></mat-divider>
+
+        <mat-list-item>
+          <mat-icon>person</mat-icon>
+          <span class="ml-3 text-center">
+            <a [routerLink]="['/conta']" (click)="sidenav.toggle()">Perfil</a>
+          </span>
+        </mat-list-item>
+
+        <mat-divider></mat-divider>
+
+        <mat-list-item *ngIf="hasRole('ROLE_OPERATOR')">
+          <mat-icon>notifications</mat-icon>
+          <span class="ml-3 text-center">
+            <a [routerLink]="['/chamado']" (click)="sidenav.toggle()">Meus Chamados</a>
+          </span>
+        </mat-list-item>
+
+        <mat-divider></mat-divider>
+
+        <mat-list-item [matMenuTriggerFor]="menu" *ngIf="hasRole('ROLE_ADMIN')">
+          <mat-icon>search</mat-icon>
+          <span class="ml-3 text-center">
+            <a (click)="sidenav.toggle()">Buscar Chamados</a>
+            <mat-menu #menu="matMenu">
+              <a routerLink="/buscaChamado" mat-menu-item> Aberta ou em andamento</a>
+              <a routerLink="/buscaChamado/fechado" mat-menu-item> Finalizada</a>
+            </mat-menu>
+          </span>
+        </mat-list-item>
+
+        <mat-divider></mat-divider>
+
+      </mat-list>
+    </mat-sidenav>
+    <mat-sidenav-content>
+      <router-outlet></router-outlet>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+  <app-footer></app-footer>
+</div>
+<div class="main-container flex flex-col absolute top-0 left-0 right-0 bottom-0">
+
+  <app-header [sidenav]="sidenav"></app-header>
+
+  <mat-sidenav-container class="sidenav-container flex-1">
+
+    <mat-sidenav #sidenav class="w-auto">
+
+      <mat-list>
+
+        <mat-list-item>
+          <mat-icon>home</mat-icon>
+          <span class="ml-3 text-center">
+            <a [routerLink]="['/']" (click)="sidenav.toggle()">Home</a>
+          </span>
+        </mat-list-item>
+
+        <mat-divider></mat-divider>
+
+        <mat-list-item>
+          <mat-icon>person</mat-icon>
+          <span class="ml-3 text-center">
+            <a [routerLink]="['/conta']" (click)="sidenav.toggle()">Perfil</a>
+          </span>
+        </mat-list-item>
+
+        <mat-divider></mat-divider>
+
+        <mat-list-item *ngIf="hasRole('ROLE_OPERATOR')">
+          <mat-icon>notifications</mat-icon>
+          <span class="ml-3 text-center">
+            <a [routerLink]="['/chamado']" (click)="sidenav.toggle()">Meus Chamados</a>
+          </span>
+        </mat-list-item>
+
+        <mat-divider></mat-divider>
+
+        <mat-list-item [matMenuTriggerFor]="menu" *ngIf="hasRole('ROLE_ADMIN')">
+          <mat-icon>search</mat-icon>
+          <span class="ml-3 text-center">
+            <a (click)="sidenav.toggle()">Buscar Chamados</a>
+            <mat-menu #menu="matMenu">
+              <a routerLink="/buscaChamado" mat-menu-item> Aberta ou em andamento</a>
+              <a routerLink="/buscaChamado/fechado" mat-menu-item> Finalizada</a>
+            </mat-menu>
+          </span>
+        </mat-list-item>
+
+        <mat-divider></mat-divider>
+
+
+      </mat-list>
+
+    </mat-sidenav>
+
+    <mat-sidenav-content>
+
+      <router-outlet></router-outlet>
+
+    </mat-sidenav-content>
+
+  </mat-sidenav-container>
+
+  <app-footer></app-footer>
+
+</div>

@@ -1,0 +1,20 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://db:5332/chamadodb
+    username: postgres
+    password: postres@123
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format-sql: true
+      show-sql: true
+    main:
+      web-development-type: servlet

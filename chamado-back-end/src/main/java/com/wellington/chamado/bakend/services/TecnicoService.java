@@ -1,0 +1,167 @@
+package com.wellington.chamado.bakend.services;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailSendException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import com.wellington.chamado.bakend.dto.CargoDTO;
+import com.wellington.chamado.bakend.dto.ChamadoDTO;
+import com.wellington.chamado.bakend.dto.EmailDTO;
+import com.wellington.chamado.bakend.dto.TecnicoDTO;
+import com.wellington.chamado.bakend.dto.TecnicoInsertDTO;
+import com.wellington.chamado.bakend.entity.Cargo;
+import com.wellington.chamado.bakend.entity.Chamado;
+import com.wellington.chamado.bakend.entity.Tecnico;
+import com.wellington.chamado.bakend.entity.enums.StatusChamado;
+import com.wellington.chamado.bakend.entity.enums.StatusEmail;
+import com.wellington.chamado.bakend.exceptions.DataIntegratyViolationException;
+import com.wellington.chamado.bakend.exceptions.ObjectNotFoundException;
+import com.wellington.chamado.bakend.repository.CargoRepository;
+import com.wellington.chamado.bakend.repository.ChamadoRepository;
+import com.wellington.chamado.bakend.repository.TecnicoRepository;
+
+import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Service
+public class TecnicoService {
+
+	@Autowired
+	private TecnicoRepository repository;
+
+	@Autowired
+	private CargoRepository cargoRepository;
+
+	@Autowired
+	private ChamadoRepository chamadoRepository;
+	
+	@Autowired
+	private JavaMailSender emailSender;
+	
+	@Autowired
+	private BCryptPasswordEncoder passwordEncoder;
+
+	@Value(value = "${spring.mail.username}")
+	private String emailFrom;
+
+	public TecnicoDTO findById(UUID id) {
+		Optional<Tecnico> cli = repository.findById(id);
+		Tecnico entity = cli.orElseThrow(() -> new ObjectNotFoundException("Tecnico não encontrado"));
+		return new TecnicoDTO(entity);
+	}
+
+	@Transactional
+	public TecnicoDTO create(TecnicoInsertDTO tecnicoDTO) {
+		Tecnico entity = new Tecnico();
+		entity.setNome(tecnicoDTO.getNome());
+		verificarEmailExistente(tecnicoDTO);
+		entity.setSenha(passwordEncoder.encode(tecnicoDTO.getSenha()));
+		entity.setEmail(tecnicoDTO.getEmail());
+		atribuirCargo(entity, tecnicoDTO);
+		repository.save(entity);
+		return new TecnicoDTO(entity);
+	}
+
+	@Transactional
+	public TecnicoDTO updateEmail(TecnicoDTO tecnicoDTO, UUID id) {
+		Tecnico entity = repository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Tecnico não encontrado"));
+		verificarEmailExistente(tecnicoDTO);
+		entity.setEmail(tecnicoDTO.getEmail());
+		repository.save(entity);
+		return new TecnicoDTO(entity);
+	}
+
+	@Transactional
+	public ChamadoDTO aceitarChamado(Long id, UUID idTecnico) {
+		Chamado chamado = chamadoRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Chamado não encontrado"));
+		if (chamado.getTecnico() != null && !chamado.getTecnico().getId().equals(idTecnico)) {
+	        throw new DataIntegratyViolationException("Este chamado já está em andamento e possui um técnico associado.");
+	    }
+		Tecnico tecnico = repository.findById(idTecnico).orElseThrow(() -> new ObjectNotFoundException("Técnico não encontrado"));
+		chamado.setTecnico(tecnico);
+		chamado.setStatusChamado(StatusChamado.ANDAMENTO);
+		EmailDTO emailModel = new EmailDTO();
+	    emailModel.setSendDateEmail(LocalDateTime.now());
+	    emailModel.setEmailFrom(emailFrom);
+	    emailModel.setEmailTo(chamado.getCliente().getEmail());
+	    emailModel.setSubject("CHAMADO ACEITO");
+	    emailModel.setText(chamado.getCliente().getNome() + " Seu chamado foi aceito por " + tecnico.getNome() + " Chamado #" + chamado.getId());
+	    emailModel.setStatusEmail(StatusEmail.SENT);
+	    try {
+	        SimpleMailMessage message = new SimpleMailMessage();
+	        message.setTo(emailModel.getEmailTo());
+	        message.setSubject(emailModel.getSubject());
+	        message.setText(emailModel.getText());
+	        emailSender.send(message);
+	    } catch (MailSendException e) {
+	        emailModel.setStatusEmail(StatusEmail.ERROR);
+	        throw new DataIntegratyViolationException("Erro ao enviar o email. ");
+	    } finally {
+	    	chamadoRepository.save(chamado);
+		}
+		return new ChamadoDTO(chamado);
+	}
+
+	@Transactional
+	public ChamadoDTO finalizarChamado(Long id, UUID idTecnico) {
+		Chamado chamado = chamadoRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Chamado não encontrado"));
+		if (chamado.getTecnico() != null && !chamado.getTecnico().getId().equals(idTecnico)) {
+			throw new DataIntegratyViolationException("Somente o técnico associado pode finalizar este chamado aberto.");
+		}
+		chamado.setStatusChamado(StatusChamado.FECHADO);
+		chamado.setDataFechamento(LocalDateTime.now());
+		EmailDTO emailModel = new EmailDTO();
+	    emailModel.setSendDateEmail(LocalDateTime.now());
+	    emailModel.setEmailFrom(emailFrom);
+	    emailModel.setEmailTo(chamado.getCliente().getEmail());
+	    emailModel.setSubject("CHAMADO FINALIZADO");
+	    emailModel.setText(chamado.getCliente().getNome() + " Seu chamado foi finalizado pelo técnico "+ chamado.getTecnico().getNome() + ", Obrigado(A) pela confiança. número do chamado #" + chamado.getId());
+	    emailModel.setStatusEmail(StatusEmail.SENT);
+	    try {
+	        SimpleMailMessage message = new SimpleMailMessage();
+	        message.setTo(emailModel.getEmailTo());
+	        message.setSubject(emailModel.getSubject());
+	        message.setText(emailModel.getText());
+	        emailSender.send(message);
+	    } catch (MailSendException e) {
+	        emailModel.setStatusEmail(StatusEmail.ERROR);
+	        throw new DataIntegratyViolationException("Erro ao enviar o email. ");
+	    } finally {
+	    	chamadoRepository.save(chamado);
+		}
+		return new ChamadoDTO(chamado);
+	}
+	
+	public List<ChamadoDTO> findAllChamados(){
+		List<Chamado> chamados = chamadoRepository.findAll();
+		return chamados.stream().map(ChamadoDTO::new).collect(Collectors.toList());
+	}
+	
+
+	protected void atribuirCargo(Tecnico cli, TecnicoDTO tecnicoDTO) {
+		cli.getCargos().clear();
+		for (CargoDTO car : tecnicoDTO.getCargos()) {
+			Cargo cargo = cargoRepository.findById(car.getId()).orElseThrow(() -> new ObjectNotFoundException("Cargo não encontrado"));
+			cli.getCargos().add(cargo);
+		}
+	}
+
+	protected void verificarEmailExistente(TecnicoDTO tecnicoDTO) {
+		Optional<Tecnico> entity = repository.findByEmail(tecnicoDTO.getEmail());
+		if (entity.isPresent() && !entity.get().getId().equals(tecnicoDTO.getId())) {
+			throw new DataIntegratyViolationException("Email já existe");
+		}
+	}
+
+}
