@@ -59,8 +59,7 @@ Pré-requisitos: Java 17
 
 ```bash
 # clonar repositório
-git clone https://github.com/wellsimiao/projeto-chamado.git
-git clone https://gitlab.com/wellsimiao7788/projeto-chamado.git
+https://github.com/wellsimiao/sistema-chamado.git https://gitlab.com/wellsimiao7788/projeto-chamado.git
 
 
 # entrar na pasta do projeto back end
